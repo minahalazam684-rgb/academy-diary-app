@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOPPERS' INN ACADEMY Daily Diary</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Load Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Load Lucide Icons (as they are used in the original component) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- Tailwind Configuration -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Custom Icons Wrapper for Lucide Icons ---
+        // This helper allows Lucide icons to be used directly in JSX without separate imports
+        const iconMap = {
+            User: 'user', BookOpen: 'book-open', Clock: 'clock', AlertTriangle: 'alert-triangle', 
+            Loader2: 'loader-2', CheckCircle: 'check-circle', Save: 'save', Calendar: 'calendar', 
+            GraduationCap: 'graduation-cap'
+        };
+
+        const Icon = ({ name, ...props }) => {
+            const iconKey = iconMap[name] || name.toLowerCase();
+            const lucideIcon = lucide.icons[iconKey];
+            if (!lucideIcon) return null;
+            return React.createElement(lucideIcon, props);
+        };
+        const User = (props) => <Icon name="User" {...props} />;
+        const BookOpen = (props) => <Icon name="BookOpen" {...props} />;
+        const Clock = (props) => <Icon name="Clock" {...props} />;
+        const AlertTriangle = (props) => <Icon name="AlertTriangle" {...props} />;
+        const Loader2 = (props) => <Icon name="Loader2" {...props} />;
+        const CheckCircle = (props) => <Icon name="CheckCircle" {...props} />;
+        const Save = (props) => <Icon name="Save" {...props} />;
+        const Calendar = (props) => <Icon name="Calendar" {...props} />;
+        const GraduationCap = (props) => <Icon name="GraduationCap" {...props} />;
+        
+    </script>
+
+    <!-- Firebase Imports and Configuration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- START: CONFIGURATION PLACEHOLDERS (REPLACE THESE) ---
+        // IMPORTANT: Replace the placeholder values below with your actual Firebase/App configuration.
+        // You will need a valid Firebase project config for data saving to work.
+        window.__app_id = "YOUR_APP_ID"; 
+        window.__firebase_config = '{"apiKey":"AIzaSy...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'; // Replace with your actual JSON config
+        window.__initial_auth_token = null; // Use a proper authentication method for production
+        // --- END: CONFIGURATION PLACEHOLDERS ---
+
+        // Make Firebase functions globally available for the main React script
+        window.firebaseImports = {
+            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
+            getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc
+        };
+    </script>
+    
+    <!-- Main Application Script (Must be type="text/babel") -->
+    <script type="text/babel">
+        // Access global variables and Firebase imports made available in the module script
+        const {
+            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
+            getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc
+        } = window.firebaseImports || {};
+
+        const appId = window.__app_id || 'default-app-id';
+        const firebaseConfig = window.__firebase_config ? JSON.parse(window.__firebase_config) : null;
+        const initialAuthToken = window.__initial_auth_token;
+
+        let firebaseApp = null;
+        let db = null;
+        let auth = null;
+
+        if (firebaseConfig) {
+            try {
+                firebaseApp = initializeApp(firebaseConfig);
+                db = getFirestore(firebaseApp);
+                auth = getAuth(firebaseApp);
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+            }
+        }
+
+        const serialize = (data) => JSON.stringify(data);
+        const deserialize = (json) => {
+            try {
+                return JSON.parse(json);
+            } catch (e) {
+                return json;
+            }
+        };
+
+        const getPublicDiaryRef = () => {
+            if (!db) return null;
+            return doc(db, 'artifacts', appId, 'public', 'data', 'academyDiary', 'currentStatus');
+        };
+
+        // --- Static Data Definitions ---
+        const ACADEMY_NAME = "TOPPERS' INN ACADEMY"; 
+        const SIR_AHMAD = 'Sir Ahmad';
+        const SIR_HAMMAD = 'Sir Hammad';
+        const SIR_ZULFIQAR = 'Sir Zulfiqar';
+        const SIR_SALEEM = 'Sir Saleem';
+        const MISS_SUMAIRA = 'Miss Sumaira';
+        const MISS_ANAM = 'Miss Anam';
+        const MISS_ALINA = 'Miss Alina';
+        const MISS_SHUMAILA = 'Miss Shumaila';
+        const MISS_MINAHIL = 'Miss Minahil';
+
+        const ACADEMY_CLASSES = [
+            '8th', '9th Boys (Science)', '9th Boys (Arts)', '9th Girls (Science)', 
+            '9th Girls (Arts)', '10th (Science)', '1st Year (Science)', '2nd Year (Science)',
+        ];
+
+        const CLASS_SCHEDULE = {
+            '8th': [
+                { subject: 'Maths', teacher: SIR_HAMMAD }, { subject: 'English', teacher: MISS_SUMAIRA }, 
+                { subject: 'Urdu', teacher: MISS_SUMAIRA }, { subject: 'Science', teacher: MISS_ALINA }, 
+                { subject: 'Hist/Sst', teacher: MISS_SUMAIRA }, { subject: 'Bio/THQ', teacher: MISS_SUMAIRA },
+            ],
+            '9th Boys (Science)': [
+                { subject: 'Maths', teacher: SIR_AHMAD }, { subject: 'Physics', teacher: SIR_SALEEM }, 
+                { subject: 'Chemistry', teacher: MISS_ALINA }, { subject: 'Biology', teacher: MISS_SHUMAILA }, 
+                { subject: 'Computer', teacher: MISS_MINAHIL }, { subject: 'English', teacher: SIR_ZULFIQAR }, 
+                { subject: 'Urdu', teacher: MISS_ANAM },
+            ],
+            '9th Boys (Arts)': [
+                { subject: 'Science', teacher: MISS_MINAHIL }, { subject: 'Nutrition', teacher: MISS_SHUMAILA }, 
+            ],
+            '9th Girls (Science)': [
+                { subject: 'Maths', teacher: SIR_HAMMAD }, { subject: 'Physics', teacher: MISS_MINAHIL }, 
+                { subject: 'Chemistry', teacher: MISS_ALINA }, { subject: 'Biology', teacher: MISS_SHUMAILA }, 
+                { subject: 'Computer', teacher: MISS_MINAHIL }, { subject: 'English', teacher: MISS_SUMAIRA },
+            ],
+            '9th Girls (Arts)': [],
+            '10th (Science)': [
+                { subject: 'Maths', teacher: SIR_AHMAD }, { subject: 'Chemistry', teacher: MISS_ALINA }, 
+                { subject: 'Biology', teacher: MISS_SHUMAILA }, { subject: 'Computer', teacher: MISS_MINAHIL }, 
+                { subject: 'English', teacher: SIR_ZULFIQAR }, { subject: 'Urdu', teacher: MISS_ANAM },
+            ],
+            '1st Year (Science)': [
+                { subject: 'Physics', teacher: SIR_SALEEM }, { subject: 'Chemistry', teacher: MISS_ALINA }, 
+                { subject: 'Biology', teacher: MISS_SHUMAILA }, { subject: 'Computer', teacher: MISS_MINAHIL }, 
+                { subject: 'English', teacher: SIR_ZULFIQAR },
+            ],
+            '2nd Year (Science)': [
+                { subject: 'Maths', teacher: SIR_HAMMAD }, { subject: 'Physics', teacher: SIR_SALEEM }, 
+                { subject: 'Biology', teacher: MISS_SHUMAILA }, { subject: 'Computer', teacher: MISS_MINAHIL }, 
+                { subject: 'English', teacher: SIR_ZULFIQAR },
+            ],
+        };
+
+        // --- Entry Modal Component ---
+        const EntryModal = React.memo(({ isOpen, onClose, className, subjectName, initialContent, onSave, saving }) => {
+            const [contentEntry, setContentEntry] = React.useState(initialContent || '');
+            
+            React.useEffect(() => {
+                setContentEntry(initialContent || '');
+            }, [initialContent, isOpen]);
+
+            const handleLocalSave = () => {
+                if (contentEntry.trim()) {
+                    onSave(contentEntry.trim());
+                }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300 scale-100">
+                        <div className="p-6">
+                            <h2 className="text-xl font-bold text-blue-700 mb-2">Record Daily Content</h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Class: <span className="font-semibold">{className}</span> | Subject: <span className="font-semibold">{subjectName}</span>
+                            </p>
+
+                            <textarea
+                                value={contentEntry}
+                                onChange={(e) => setContentEntry(e.target.value)}
+                                rows="6"
+                                placeholder="Enter the main topics, exercises, or concepts covered in class today. (e.g., Covered Chapter 3: Newton's Laws of Motion. Solved problems 3.1-3.5.)"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+                                disabled={saving}
+                                autoFocus
+                            ></textarea>
+
+                            <div className="flex justify-end space-x-3 mt-4">
+                                <button
+                                    onClick={onClose}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 active:scale-95 transition duration-150"
+                                    disabled={saving}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleLocalSave}
+                                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-md transition duration-150 active:scale-95 flex items-center ${
+                                        saving ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                                    disabled={saving || !contentEntry.trim()}
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4 mr-2" />
+                                            Save Entry
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        });
+
+
+        // --- React Component ---
+
+        const App = () => {
+            const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+            const [userId, setUserId] = React.useState(null);
+            const [selectedClass, setSelectedClass] = React.useState(ACADEMY_CLASSES[0]);
+            const [diaryEntries, setDiaryEntries] = React.useState({});
+            const [loading, setLoading] = React.useState(true);
+            const [statusMessage, setStatusMessage] = React.useState({ type: 'info', text: 'Connecting...' });
+
+            const [isModalOpen, setIsModalOpen] = React.useState(false);
+            const [modalData, setModalData] = React.useState({ className: null, subjectName: null, initialContent: '' });
+            const [saving, setSaving] = React.useState(false);
+
+
+            // 1. Firebase Authentication Setup
+            React.useEffect(() => {
+                if (!auth) {
+                    setStatusMessage({ type: 'error', text: 'Firebase services are unavailable. Check configuration placeholders.' });
+                    setLoading(false);
+                    return;
+                }
+
+                const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        setUserId(user.uid);
+                        setIsAuthenticated(true);
+                        setStatusMessage({ type: 'success', text: 'User authenticated.' });
+                        setLoading(false);
+                    } else {
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Auth sign-in failed:", error);
+                            setStatusMessage({ type: 'error', text: 'Authentication failed. Data will not sync.' });
+                            setLoading(false);
+                        }
+                    }
+                });
+
+                return () => unsubscribe();
+            }, []);
+
+            // 2. Firestore Listener for Diary Entries
+            React.useEffect(() => {
+                const diaryDocRef = getPublicDiaryRef();
+                if (!db || !userId || !diaryDocRef) return;
+
+                setStatusMessage({ type: 'info', text: 'Fetching diary data...' });
+
+                const unsubscribe = onSnapshot(diaryDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        const entries = data.entries ? deserialize(data.entries) : {};
+                        setDiaryEntries(entries);
+                        setStatusMessage({ type: 'success', text: 'Diary updated in real-time.' });
+                    } else {
+                        console.log("Diary document does not exist. Initializing...");
+                        setDiaryEntries({});
+                        setStatusMessage({ type: 'info', text: 'Diary initialized. Ready for entries.' });
+                    }
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Firestore error:", error);
+                    setStatusMessage({ type: 'error', text: 'Error fetching diary: ' + error.message });
+                    setLoading(false);
+                });
+
+                return () => unsubscribe();
+            }, [userId]);
+
+            const schedule = React.useMemo(() => {
+                return CLASS_SCHEDULE[selectedClass] || [];
+            }, [selectedClass]);
+
+            const today = React.useMemo(() => {
+                return new Date().toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+            }, []);
+
+            const getEntryForSubject = React.useCallback((className, subjectName) => {
+                const classEntries = diaryEntries[className] || {};
+                const subjectEntries = classEntries[subjectName] || [];
+                return subjectEntries.find(entry => entry.date === today);
+            }, [diaryEntries, today]);
+
+
+            // --- Teacher/Admin Functions ---
+
+            const openModal = (className, subjectName) => {
+                const existingEntry = getEntryForSubject(className, subjectName);
+                setModalData({
+                    className,
+                    subjectName,
+                    initialContent: existingEntry ? existingEntry.content : ''
+                });
+                setIsModalOpen(true);
+            };
+
+            const closeModal = React.useCallback(() => {
+                setIsModalOpen(false);
+                setModalData({ className: null, subjectName: null, initialContent: '' });
+            }, []);
+
+            const handleSaveEntry = React.useCallback(async (contentEntry) => {
+                const { className, subjectName } = modalData;
+                const diaryDocRef = getPublicDiaryRef();
+
+                if (!contentEntry || !className || !subjectName || !diaryDocRef) {
+                    setStatusMessage({ type: 'warning', text: 'Content cannot be empty or database reference is missing.' });
+                    return;
+                }
+
+                setSaving(true);
+                setStatusMessage({ type: 'info', text: 'Saving entry...' });
+                
+                const newEntry = {
+                    date: today,
+                    content: contentEntry,
+                    teacherId: userId,
+                    timestamp: new Date().toISOString()
+                };
+
+                try {
+                    const docSnap = await getDoc(diaryDocRef);
+                    let currentEntries = {};
+
+                    if (docSnap.exists() && docSnap.data().entries) {
+                        currentEntries = deserialize(docSnap.data().entries);
+                    }
+
+                    if (!currentEntries[className]) { currentEntries[className] = {}; }
+                    if (!currentEntries[className][subjectName]) { currentEntries[className][subjectName] = []; }
+
+                    const subjectEntries = currentEntries[className][subjectName];
+                    const existingIndex = subjectEntries.findIndex(entry => entry.date === today);
+
+                    if (existingIndex !== -1) {
+                        subjectEntries[existingIndex] = newEntry;
+                    } else {
+                        subjectEntries.push(newEntry);
+                    }
+
+                    await setDoc(diaryDocRef, {
+                        entries: serialize(currentEntries),
+                        lastUpdated: new Date().toISOString()
+                    }, { merge: true });
+
+                    setStatusMessage({ type: 'success', text: 'Diary entry saved successfully!' });
+                    closeModal();
+                } catch (error) {
+                    console.error("Error saving document: ", error);
+                    setStatusMessage({ type: 'error', text: 'Failed to save entry: ' + error.message });
+                } finally {
+                    setSaving(false);
+                }
+            }, [modalData, today, userId, closeModal]);
+
+
+            // --- UI Components ---
+
+            const Header = () => (
+                <div className="bg-white p-4 shadow-md sticky top-0 z-10">
+                    <h1 className="text-2xl font-extrabold text-blue-800 tracking-tight flex items-center">
+                        <BookOpen className="w-6 h-6 mr-2 text-blue-500" />
+                        {ACADEMY_NAME} Daily Diary
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Viewing entries for: <span className="font-semibold text-gray-700">{today}</span>
+                    </p>
+                    <div className="flex items-center text-xs mt-2 text-gray-600">
+                        <User className="w-4 h-4 mr-1 text-gray-400" />
+                        User ID: <span title={userId} className="truncate ml-1 font-mono text-xs max-w-[150px] sm:max-w-none">{userId || 'N/A'}</span>
+                    </div>
+                    {statusMessage && (
+                        <div className={`mt-2 p-2 rounded-lg text-sm ${
+                            statusMessage.type === 'error' ? 'bg-red-100 text-red-700' :
+                            statusMessage.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
+                            statusMessage.type === 'success' ? 'bg-green-100 text-green-700' :
+                            'bg-blue-100 text-blue-700'
+                        } flex items-center`}>
+                            {statusMessage.type === 'error' && <AlertTriangle className="w-4 h-4 mr-2" />}
+                            {statusMessage.type === 'success' && <CheckCircle className="w-4 h-4 mr-2" />}
+                            {statusMessage.type === 'info' && <Clock className="w-4 h-4 mr-2" />}
+                            {statusMessage.text}
+                        </div>
+                    )}
+                </div>
+            );
+
+            const ClassSelector = () => (
+                <div className="p-4 bg-gray-50 border-b border-gray-200">
+                    <label htmlFor="class-select" className="block text-sm font-medium text-gray-700 mb-2">
+                        <GraduationCap className="inline-block w-4 h-4 mr-1 text-blue-500" />
+                        Select Class & Group:
+                    </label>
+                    <div className="relative">
+                        <select
+                            id="class-select"
+                            value={selectedClass}
+                            onChange={(e) => setSelectedClass(e.target.value)}
+                            className="block w-full rounded-lg border-gray-300 shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer bg-white pr-8"
+                        >
+                            {ACADEMY_CLASSES.map(cls => (
+                                <option key={cls} value={cls}>{cls}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const DiaryContent = () => {
+                if (loading) {
+                    return (
+                        <div className="flex justify-center items-center p-8 text-blue-600">
+                            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                            Loading Diary...
+                        </div>
+                    );
+                }
+
+                if (schedule.length === 0) {
+                    return (
+                        <div className="p-8 text-center text-gray-500">
+                            <AlertTriangle className="w-8 h-8 mx-auto mb-4 text-yellow-500" />
+                            <p className="font-semibold">No assigned subjects found for {selectedClass}.</p>
+                            <p className="text-sm">Only subjects with an explicitly assigned teacher in the timetable are displayed.</p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="p-4 grid gap-4">
+                        {schedule.map((slot, index) => {
+                            const entry = getEntryForSubject(selectedClass, slot.subject);
+                            const isCompleted = !!entry;
+
+                            return (
+                                <div
+                                    key={`${selectedClass}-${slot.subject}`}
+                                    className={`p-4 rounded-xl shadow-lg transition-all duration-300
+                                        ${isCompleted ? 'bg-white border-l-4 border-green-500 hover:shadow-xl' : 'bg-white border-l-4 border-yellow-500 hover:shadow-lg'}`}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                                            <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
+                                            {slot.subject}
+                                        </h3>
+                                        <button
+                                            onClick={() => openModal(selectedClass, slot.subject)}
+                                            className="flex-shrink-0 px-3 py-1 text-sm font-semibold rounded-full shadow-md transition-all duration-300
+                                                bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex items-center"
+                                        >
+                                            {isCompleted ? 'Edit Entry' : 'Add Content'}
+                                        </button>
+                                    </div>
+
+                                    <p className="text-sm text-gray-600 mb-3 border-b pb-2">
+                                        Assigned Teacher: <span className="font-medium text-blue-700">{slot.teacher}</span>
+                                    </p>
+                                    
+                                    <div className="bg-gray-50 p-3 rounded-lg min-h-[50px]">
+                                        <h4 className="text-sm font-extrabold text-gray-700 mb-2 border-b border-gray-200 pb-1">
+                                            DAILY RECORD
+                                        </h4>
+                                        {isCompleted ? (
+                                            <>
+                                                <div className="flex justify-between items-center text-xs mb-2">
+                                                    <div className="flex items-center text-green-700 font-semibold">
+                                                        <Calendar className="w-3 h-3 mr-1" />
+                                                        {entry.date}
+                                                    </div>
+                                                    <div className="flex items-center text-gray-600">
+                                                        <User className="w-3 h-3 mr-1" />
+                                                        Teacher ID: <span className="font-mono ml-1 truncate max-w-[80px] sm:max-w-[120px]" title={entry.teacherId}>{entry.teacherId}</span>
+                                                    </div>
+                                                </div>
+                                                <p className="text-gray-800 whitespace-pre-wrap mt-1">{entry.content}</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-gray-500 italic text-sm">
+                                                No daily content recorded yet for this subject.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-100 font-[Inter] antialiased">
+                    <Header />
+                    <div className="max-w-4xl mx-auto pb-8">
+                        <ClassSelector />
+                        <DiaryContent />
+                    </div>
+
+                    <EntryModal
+                        isOpen={isModalOpen}
+                        onClose={closeModal}
+                        className={modalData.className}
+                        subjectName={modalData.subjectName}
+                        initialContent={modalData.initialContent}
+                        onSave={handleSaveEntry}
+                        saving={saving}
+                    />
+                </div>
+            );
+        };
+
+        // Render the application
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
