@@ -9,8 +9,15 @@
     <!-- Use Inter font family -->
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
-        /* Critical: Ensure button is treated as interactive, not for text selection */
-        .btn-add-content { user-select: none !important; cursor: pointer !important; }
+        /* CRITICAL: Enforce standard interactive cursor and prevent text selection */
+        .btn-add-content { 
+            user-select: none !important; 
+            cursor: pointer !important; 
+        }
+        /* Hide the modal with CSS transitions */
+        .modal-enter { opacity: 0; pointer-events: none; }
+        .modal-enter .modal-content-area { transform: scale(0.95); opacity: 0; }
+        .modal-exit { opacity: 1; pointer-events: auto; }
     </style>
 </head>
 <body>
@@ -48,9 +55,9 @@
         </main>
     </div>
 
-    <!-- Content Modal (Hidden by default) -->
-    <div id="contentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity duration-300" aria-modal="true" role="dialog">
-        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-11/12 max-w-lg transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+    <!-- Content Modal (Hidden by default, using CSS classes for visibility control) -->
+    <div id="contentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 modal-enter transition-opacity duration-300" aria-modal="true" role="dialog" style="transition: opacity 0.3s ease-out; opacity: 0; pointer-events: none;">
+        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-11/12 max-w-lg transform transition-all duration-300 scale-95 opacity-0" id="modalContent" style="transition: transform 0.3s ease-out, opacity 0.3s ease-out;">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <h2 class="text-xl font-bold text-blue-800">Add Daily Record for <span id="modalSubjectTitle"></span></h2>
                 <!-- Close Button -->
@@ -311,7 +318,7 @@
                 const content = record ? record.content : 'No daily content recorded yet for this subject.';
                 const contentClass = record ? 'text-gray-800' : 'text-gray-500 italic';
                 
-                // CRITICAL CHANGE: Added onmousedown="return false;" and cursor-pointer class
+                // Removed the non-standard onmousedown="return false;"
                 return `
                     <div class="bg-blue-50 border-l-4 border-blue-600 p-5 rounded-xl shadow-md transition duration-300 hover:shadow-lg">
                         <div class="flex justify-between items-start">
@@ -320,7 +327,6 @@
                                 class="btn-add-content flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-105 cursor-pointer"
                                 title="Add/Edit today's entry"
                                 data-subject-id="${subject.id}"
-                                onmousedown="return false;"
                             >
                                 Add Content
                             </button>
@@ -358,6 +364,7 @@
         
         /**
          * Handler function for "Add Content" button clicks.
+         * This is the final attempt to isolate the click event using setTimeout.
          * @param {Event} event 
          */
         function handleAddContentClick(event) {
@@ -368,8 +375,12 @@
             
             const subjectId = event.currentTarget.getAttribute('data-subject-id');
             if (subjectId) {
-                // Call the existing openModal function
-                openModal(subjectId);
+                // CRITICAL CHANGE: Wrap openModal in a setTimeout (0ms)
+                // This delays the function execution just enough to finish the browser's 
+                // native click processing, often bypassing stubborn event conflicts.
+                setTimeout(() => {
+                    openModal(subjectId);
+                }, 0);
             } else {
                 console.error("Button clicked but no subject-id found.");
             }
@@ -403,12 +414,11 @@
                 const modal = document.getElementById('contentModal');
                 const modalContent = document.getElementById('modalContent');
                 
-                modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.style.opacity = '1';
-                    modalContent.style.transform = 'scale(1)';
-                    modalContent.style.opacity = '1';
-                }, 10); // Short delay for transition to start
+                // Apply CSS styles directly for immediate visibility change
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+                modalContent.style.transform = 'scale(1)';
+                modalContent.style.opacity = '1';
                 
                 // Add event listener to close modal on background click
                 modal.onclick = (e) => {
@@ -435,9 +445,9 @@
             modalContent.style.transform = 'scale(0.95)';
             modalContent.style.opacity = '0';
             
-            // Hide after transition
+            // Hide pointer events after transition
             setTimeout(() => {
-                modal.classList.add('hidden');
+                modal.style.pointerEvents = 'none';
             }, 300);
         };
 
