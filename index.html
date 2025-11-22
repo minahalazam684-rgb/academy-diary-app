@@ -9,6 +9,8 @@
     <!-- Use Inter font family -->
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        /* Style to ensure the button is the primary click target and not text */
+        .btn-add-content { user-select: none; }
     </style>
 </head>
 <body>
@@ -81,7 +83,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
-            getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs, 
+            getFirestore, doc, setDoc, onSnapshot, collection, query, where, 
             serverTimestamp, setLogLevel 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -109,8 +111,6 @@
             diaryRecords: {}, // Cache for current day's records
             isAuthReady: false,
             // Mock data for classes and subjects based on our timetable
-            // Note: This must match the structure of data in Firestore, 
-            // but we use this mock locally if Firestore hasn't initialized the data yet.
             MOCK_CLASS_DATA: {
                 // "1st Year (Science)"
                 "1st-year-science": {
@@ -121,7 +121,6 @@
                         { id: "chemistry-1st", name: "Chemistry", teacher: "Miss Alina" },
                         { id: "computer-1st", name: "Computer", teacher: "Miss Minahil" },
                         { id: "biology-1st", name: "Biology", teacher: "Miss Shumaila" },
-                        // Add other subjects as needed...
                     ]
                 },
                 // "9th Boys"
@@ -132,7 +131,6 @@
                         { id: "math-9b", name: "Math", teacher: "Sir Hammad" },
                         { id: "physics-9b", name: "Physics", teacher: "Sir Saleem" },
                         { id: "english-9b", name: "English", teacher: "Sir Zulfiqar" },
-                        // Add other subjects as needed...
                     ]
                 },
                 // "8th"
@@ -143,7 +141,6 @@
                         { id: "english-8", name: "English", teacher: "Miss Sumaira" },
                         { id: "math-8", name: "Math", teacher: "Sir Hammad" },
                         { id: "urdu-8", name: "Urdu", teacher: "Miss Anam" },
-                        // Add other subjects as needed...
                     ]
                 }
             }
@@ -314,14 +311,15 @@
                 const content = record ? record.content : 'No daily content recorded yet for this subject.';
                 const contentClass = record ? 'text-gray-800' : 'text-gray-500 italic';
                 
+                // CRITICAL CHANGE: Use data-subject-id attribute instead of inline onclick
                 return `
                     <div class="bg-blue-50 border-l-4 border-blue-600 p-5 rounded-xl shadow-md transition duration-300 hover:shadow-lg">
                         <div class="flex justify-between items-start">
                             <h3 class="text-2xl font-bold text-blue-900">${subject.name}</h3>
                             <button 
-                                onclick="openModal('${subject.id}')" 
-                                class="btn-primary flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-105"
+                                class="btn-add-content flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-105"
                                 title="Add/Edit today's entry"
+                                data-subject-id="${subject.id}"
                             >
                                 Add Content
                             </button>
@@ -339,7 +337,43 @@
             }).join('');
 
             container.innerHTML = html;
+            // After rendering, attach the click handlers using the dedicated function
+            attachButtonListeners();
         }
+        
+        /**
+         * Attaches a click event listener to all "Add Content" buttons.
+         * This solves the issue of the inline onclick being ignored.
+         */
+        function attachButtonListeners() {
+            const buttons = document.querySelectorAll('.btn-add-content');
+            buttons.forEach(button => {
+                // Remove existing listener to prevent duplicates
+                button.removeEventListener('click', handleAddContentClick); 
+                // Add the new listener
+                button.addEventListener('click', handleAddContentClick);
+            });
+        }
+        
+        /**
+         * Handler function for "Add Content" button clicks.
+         * @param {Event} event 
+         */
+        function handleAddContentClick(event) {
+            // Prevent default form submission or other unwanted behavior
+            event.preventDefault(); 
+            // Stop event propagation to ensure no parent element interferes
+            event.stopPropagation(); 
+            
+            const subjectId = event.currentTarget.getAttribute('data-subject-id');
+            if (subjectId) {
+                // Call the existing openModal function
+                openModal(subjectId);
+            } else {
+                console.error("Button clicked but no subject-id found.");
+            }
+        }
+
 
         // --- Modal & Data Saving Functions (Exposed to window) ---
 
@@ -360,7 +394,7 @@
                 
                 // Set modal data
                 document.getElementById('modalSubjectId').value = subjectId;
-                document.getElementById('modalSubjectName').textContent = subject.name;
+                document.getElementById('modalSubjectTitle').textContent = subject.name; // Corrected ID usage
                 document.getElementById('contentInput').value = record ? record.content : '';
                 document.getElementById('saveButton').disabled = false;
 
@@ -399,9 +433,6 @@
             modal.style.opacity = '0';
             modalContent.style.transform = 'scale(0.95)';
             modalContent.style.opacity = '0';
-            
-            // Remove event listener
-            modal.onclick = null;
             
             // Hide after transition
             setTimeout(() => {
@@ -446,16 +477,12 @@
                     timestamp: serverTimestamp() // Adds the server-side timestamp
                 };
 
-                // If record exists, update the existing document. Otherwise, create a new one.
-                if (record && record.docId) {
-                    const docRef = doc(db, getDiaryCollectionPath(), record.docId);
-                    await setDoc(docRef, data, { merge: true }); // Use setDoc with merge for update
-                } else {
-                    // Create a unique document ID based on class-subject-date to prevent duplicates
-                    const uniqueDocId = `${globalState.currentClassId}-${subjectId}-${getDiaryDate()}`;
-                    const docRef = doc(db, getDiaryCollectionPath(), uniqueDocId);
-                    await setDoc(docRef, data); // Use setDoc with the predefined ID
-                }
+                // Create a unique document ID based on class-subject-date to prevent duplicates
+                const uniqueDocId = `${globalState.currentClassId}-${subjectId}-${getDiaryDate()}`;
+                const docRef = doc(db, getDiaryCollectionPath(), uniqueDocId);
+                
+                // Use setDoc with the predefined ID. Firestore handles creation vs. update automatically.
+                await setDoc(docRef, data);
 
                 showMessage("Diary entry saved successfully! Refreshing view...", 'success', 4000);
 
