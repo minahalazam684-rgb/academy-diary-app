@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Load Babel for JSX transformation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Load Lucide Icons (as they are used in the original component) -->
+    <!-- Load Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <!-- Tailwind Configuration -->
     <style>
@@ -24,7 +24,6 @@
 
     <script type="text/babel">
         // --- Custom Icons Wrapper for Lucide Icons ---
-        // This helper allows Lucide icons to be used directly in JSX without separate imports
         const iconMap = {
             User: 'user', BookOpen: 'book-open', Clock: 'clock', AlertTriangle: 'alert-triangle', 
             Loader2: 'loader-2', CheckCircle: 'check-circle', Save: 'save', Calendar: 'calendar', 
@@ -55,13 +54,12 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- START: CONFIGURATION PLACEHOLDERS (REPLACE THESE) ---
-        // IMPORTANT: Replace the placeholder values below with your actual Firebase/App configuration.
-        // You will need a valid Firebase project config for data saving to work.
-        window.__app_id = "YOUR_APP_ID"; 
-        window.__firebase_config = '{"apiKey":"AIzaSy...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'; // Replace with your actual JSON config
-        window.__initial_auth_token = null; // Use a proper authentication method for production
-        // --- END: CONFIGURATION PLACEHOLDERS ---
+        // --- HARDCODED PRODUCTION CONFIGURATION (FIXED) ---
+        // This configuration uses the actual values from your Firebase project.
+        window.__app_id = "1:973681625700:web:23bf84c47d1755f3ef2d71"; 
+        window.__firebase_config = '{"apiKey":"AIzaSyCbDx-LzKHukvebgQ51b69Z0jJxvH_aFFnY","authDomain":"toppers-inn-academy-diary.firebaseapp.com","projectId":"toppers-inn-academy-diary","storageBucket":"toppers-inn-academy-diary.appspot.com","messagingSenderId":"973681625700","appId":"1:973681625700:web:23bf84c47d1755f3ef2d71","measurementId":"G-DY4BMV12RY"}';
+        window.__initial_auth_token = null; 
+        // --- END HARDCODED PRODUCTION CONFIGURATION ---
 
         // Make Firebase functions globally available for the main React script
         window.firebaseImports = {
@@ -96,6 +94,12 @@
             }
         }
 
+        // Helper function to generate a random ID if authentication fails,
+        // though anonymous sign-in is expected to succeed now.
+        const generateRandomId = () => 
+            'anon-' + Math.random().toString(36).substring(2, 9);
+
+
         const serialize = (data) => JSON.stringify(data);
         const deserialize = (json) => {
             try {
@@ -107,10 +111,11 @@
 
         const getPublicDiaryRef = () => {
             if (!db) return null;
+            // The path must align with the security rules, using the appId extracted from the config.
             return doc(db, 'artifacts', appId, 'public', 'data', 'academyDiary', 'currentStatus');
         };
 
-        // --- Static Data Definitions ---
+        // --- Static Data Definitions (from previous context) ---
         const ACADEMY_NAME = "TOPPERS' INN ACADEMY"; 
         const SIR_AHMAD = 'Sir Ahmad';
         const SIR_HAMMAD = 'Sir Hammad';
@@ -235,7 +240,7 @@
         });
 
 
-        // --- React Component ---
+        // --- Main Application Component ---
 
         const App = () => {
             const [isAuthenticated, setIsAuthenticated] = React.useState(false);
@@ -253,7 +258,7 @@
             // 1. Firebase Authentication Setup
             React.useEffect(() => {
                 if (!auth) {
-                    setStatusMessage({ type: 'error', text: 'Firebase services are unavailable. Check configuration placeholders.' });
+                    setStatusMessage({ type: 'error', text: 'Firebase services are unavailable. Check configuration.' });
                     setLoading(false);
                     return;
                 }
@@ -262,7 +267,7 @@
                     if (user) {
                         setUserId(user.uid);
                         setIsAuthenticated(true);
-                        setStatusMessage({ type: 'success', text: 'User authenticated.' });
+                        setStatusMessage({ type: 'success', text: 'User authenticated and ready to sync data.' });
                         setLoading(false);
                     } else {
                         try {
@@ -273,7 +278,9 @@
                             }
                         } catch (error) {
                             console.error("Auth sign-in failed:", error);
-                            setStatusMessage({ type: 'error', text: 'Authentication failed. Data will not sync.' });
+                            // Fallback to a random ID if anonymous sign-in fails, although this violates security rules if not authenticated.
+                            setUserId(generateRandomId());
+                            setStatusMessage({ type: 'error', text: 'Authentication failed. Data will not sync (using local ID).' });
                             setLoading(false);
                         }
                     }
@@ -285,16 +292,26 @@
             // 2. Firestore Listener for Diary Entries
             React.useEffect(() => {
                 const diaryDocRef = getPublicDiaryRef();
-                if (!db || !userId || !diaryDocRef) return;
+                // Check for successful authentication (isAuthenticated) OR if we have a generated userId (for non-authenticated state).
+                if (!db || !userId) return;
 
                 setStatusMessage({ type: 'info', text: 'Fetching diary data...' });
 
                 const unsubscribe = onSnapshot(diaryDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
+                        // Handle potential serialization/deserialization issues
                         const entries = data.entries ? deserialize(data.entries) : {};
-                        setDiaryEntries(entries);
-                        setStatusMessage({ type: 'success', text: 'Diary updated in real-time.' });
+                        
+                        // Check if deserialization returned an object
+                        if (typeof entries === 'object' && entries !== null) {
+                            setDiaryEntries(entries);
+                            setStatusMessage({ type: 'success', text: 'Diary updated in real-time.' });
+                        } else {
+                            // If deserialization failed, treat it as an empty object for safety
+                            setDiaryEntries({});
+                            setStatusMessage({ type: 'warning', text: 'Data corrupted or empty. Initializing diary.' });
+                        }
                     } else {
                         console.log("Diary document does not exist. Initializing...");
                         setDiaryEntries({});
@@ -315,6 +332,7 @@
             }, [selectedClass]);
 
             const today = React.useMemo(() => {
+                // Formatting date to match the previous structure: "Saturday, November 22, 2025"
                 return new Date().toLocaleDateString('en-US', {
                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                 });
@@ -348,8 +366,14 @@
                 const { className, subjectName } = modalData;
                 const diaryDocRef = getPublicDiaryRef();
 
-                if (!contentEntry || !className || !subjectName || !diaryDocRef) {
-                    setStatusMessage({ type: 'warning', text: 'Content cannot be empty or database reference is missing.' });
+                // Crucial: Check if authenticated and if we have a valid reference
+                if (!isAuthenticated || !diaryDocRef) {
+                     setStatusMessage({ type: 'error', text: 'Cannot save: Authentication failed or Database not ready.' });
+                     closeModal();
+                     return;
+                }
+                if (!contentEntry || !className || !subjectName) {
+                    setStatusMessage({ type: 'warning', text: 'Content cannot be empty or class/subject missing.' });
                     return;
                 }
 
@@ -369,6 +393,9 @@
 
                     if (docSnap.exists() && docSnap.data().entries) {
                         currentEntries = deserialize(docSnap.data().entries);
+                        if (typeof currentEntries !== 'object' || currentEntries === null) {
+                            currentEntries = {}; // Reset if deserialized data is invalid
+                        }
                     }
 
                     if (!currentEntries[className]) { currentEntries[className] = {}; }
@@ -383,6 +410,7 @@
                         subjectEntries.push(newEntry);
                     }
 
+                    // Save the entire map back as a serialized JSON string
                     await setDoc(diaryDocRef, {
                         entries: serialize(currentEntries),
                         lastUpdated: new Date().toISOString()
@@ -396,7 +424,7 @@
                 } finally {
                     setSaving(false);
                 }
-            }, [modalData, today, userId, closeModal]);
+            }, [modalData, today, userId, closeModal, isAuthenticated]);
 
 
             // --- UI Components ---
@@ -494,7 +522,8 @@
                                         <button
                                             onClick={() => openModal(selectedClass, slot.subject)}
                                             className="flex-shrink-0 px-3 py-1 text-sm font-semibold rounded-full shadow-md transition-all duration-300
-                                                bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex items-center"
+                                                bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={!isAuthenticated}
                                         >
                                             {isCompleted ? 'Edit Entry' : 'Add Content'}
                                         </button>
