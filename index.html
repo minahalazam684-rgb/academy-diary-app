@@ -9,8 +9,8 @@
     <!-- Use Inter font family -->
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
-        /* Style to ensure the button is the primary click target and not text */
-        .btn-add-content { user-select: none; }
+        /* Critical: Ensure button is treated as interactive, not for text selection */
+        .btn-add-content { user-select: none !important; cursor: pointer !important; }
     </style>
 </head>
 <body>
@@ -311,15 +311,16 @@
                 const content = record ? record.content : 'No daily content recorded yet for this subject.';
                 const contentClass = record ? 'text-gray-800' : 'text-gray-500 italic';
                 
-                // CRITICAL CHANGE: Use data-subject-id attribute instead of inline onclick
+                // CRITICAL CHANGE: Added onmousedown="return false;" and cursor-pointer class
                 return `
                     <div class="bg-blue-50 border-l-4 border-blue-600 p-5 rounded-xl shadow-md transition duration-300 hover:shadow-lg">
                         <div class="flex justify-between items-start">
                             <h3 class="text-2xl font-bold text-blue-900">${subject.name}</h3>
                             <button 
-                                class="btn-add-content flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-105"
+                                class="btn-add-content flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-105 cursor-pointer"
                                 title="Add/Edit today's entry"
                                 data-subject-id="${subject.id}"
+                                onmousedown="return false;"
                             >
                                 Add Content
                             </button>
@@ -343,7 +344,7 @@
         
         /**
          * Attaches a click event listener to all "Add Content" buttons.
-         * This solves the issue of the inline onclick being ignored.
+         * This handles the actual call to openModal.
          */
         function attachButtonListeners() {
             const buttons = document.querySelectorAll('.btn-add-content');
@@ -461,7 +462,6 @@
                 closeModal();
                 showMessage("Saving diary entry...", 'info', 0);
                 
-                const record = globalState.diaryRecords[subjectId];
                 const collectionRef = collection(db, getDiaryCollectionPath());
                 
                 const subject = globalState.classData[globalState.currentClassId].subjects.find(s => s.id === subjectId);
