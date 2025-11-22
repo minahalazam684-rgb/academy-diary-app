@@ -3,592 +3,512 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOPPERS' INN ACADEMY Daily Diary</title>
+    <title>Toppers' Inn Academy Daily Diary</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load React and ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Load Babel for JSX transformation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Load Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <!-- Tailwind Configuration -->
+    <!-- Use Inter font family -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
     </style>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="text/babel">
-        // --- Custom Icons Wrapper for Lucide Icons ---
-        const iconMap = {
-            User: 'user', BookOpen: 'book-open', Clock: 'clock', AlertTriangle: 'alert-triangle', 
-            Loader2: 'loader-2', CheckCircle: 'check-circle', Save: 'save', Calendar: 'calendar', 
-            GraduationCap: 'graduation-cap'
-        };
+    <!-- Main Application Container -->
+    <div id="app" class="max-w-4xl mx-auto p-4 md:p-8 bg-white shadow-xl rounded-xl mt-6 mb-12">
 
-        const Icon = ({ name, ...props }) => {
-            const iconKey = iconMap[name] || name.toLowerCase();
-            const lucideIcon = lucide.icons[iconKey];
-            if (!lucideIcon) return null;
-            return React.createElement(lucideIcon, props);
-        };
-        const User = (props) => <Icon name="User" {...props} />;
-        const BookOpen = (props) => <Icon name="BookOpen" {...props} />;
-        const Clock = (props) => <Icon name="Clock" {...props} />;
-        const AlertTriangle = (props) => <Icon name="AlertTriangle" {...props} />;
-        const Loader2 = (props) => <Icon name="Loader2" {...props} />;
-        const CheckCircle = (props) => <Icon name="CheckCircle" {...props} />;
-        const Save = (props) => <Icon name="Save" {...props} />;
-        const Calendar = (props) => <Icon name="Calendar" {...props} />;
-        const GraduationCap = (props) => <Icon name="GraduationCap" {...props} />;
-        
-    </script>
+        <!-- Header -->
+        <header class="pb-4 border-b border-gray-200">
+            <h1 class="text-3xl font-extrabold text-blue-900">TOPPERS' INN ACADEMY Daily Diary</h1>
+            <p class="mt-1 text-sm text-gray-600" id="dateDisplay">Viewing entries for: Loading Date...</p>
+            <p class="text-xs text-gray-500 mt-0" id="userIdDisplay">User ID: N/A</p>
+        </header>
 
-    <!-- Firebase Imports and Configuration -->
+        <!-- Message/Status Banner Area -->
+        <div id="messageArea" class="mt-4">
+            <!-- Messages (Success/Error/Loading) will appear here -->
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="mt-6 space-y-6">
+
+            <!-- Class Selection Dropdown -->
+            <div class="flex items-center space-x-4">
+                <label for="classSelect" class="text-lg font-semibold text-gray-700">Select Class & Group:</label>
+                <select id="classSelect" onchange="loadClassData()" class="p-2 border border-blue-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 w-full md:w-64 transition duration-150 ease-in-out">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <!-- Subjects Container (Where subject cards are rendered) -->
+            <div id="subjectsContainer" class="space-y-6">
+                <p class="text-center text-gray-500 py-10">Select a class to view subjects.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Content Modal (Hidden by default) -->
+    <div id="contentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity duration-300" aria-modal="true" role="dialog">
+        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-11/12 max-w-lg transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-xl font-bold text-blue-800">Add Daily Record for <span id="modalSubjectTitle"></span></h2>
+                <!-- Close Button -->
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-900 transition-colors duration-150">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <input type="hidden" id="modalSubjectId">
+            <input type="hidden" id="modalSubjectName">
+
+            <div class="mb-4">
+                <label for="contentInput" class="block text-sm font-medium text-gray-700 mb-2">Daily Content:</label>
+                <textarea id="contentInput" rows="6" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-inner focus:ring-blue-500 focus:border-blue-500 transition duration-150" placeholder="Enter the content covered in today's class..."></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition duration-150">
+                    Cancel
+                </button>
+                <button onclick="saveContent()" id="saveButton" class="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-md transition duration-150 disabled:opacity-50" disabled>
+                    Save Entry
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports (MUST use type="module") -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs, 
+            serverTimestamp, setLogLevel 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // IMPORTANT: Global variables from the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
         
-        // --- HARDCODED PRODUCTION CONFIGURATION (FIXED) ---
-        // This configuration uses the actual values from your Firebase project.
-        window.__app_id = "1:973681625700:web:23bf84c47d1755f3ef2d71"; 
-        window.__firebase_config = '{"apiKey":"AIzaSyCbDx-LzKHukvebgQ51b69Z0jJxvH_aFFnY","authDomain":"toppers-inn-academy-diary.firebaseapp.com","projectId":"toppers-inn-academy-diary","storageBucket":"toppers-inn-academy-diary.appspot.com","messagingSenderId":"973681625700","appId":"1:973681625700:web:23bf84c47d1755f3ef2d71","measurementId":"G-DY4BMV12RY"}';
-        window.__initial_auth_token = null; 
-        // --- END HARDCODED PRODUCTION CONFIGURATION ---
+        // Log all Firestore debug messages (useful for troubleshooting)
+        setLogLevel('Debug');
 
-        // Make Firebase functions globally available for the main React script
-        window.firebaseImports = {
-            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
-            getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc
+        // Global state
+        window.globalState = {
+            db,
+            auth,
+            userId: null,
+            appId,
+            currentClassId: null,
+            classData: {}, // Cache for all class data
+            diaryRecords: {}, // Cache for current day's records
+            isAuthReady: false,
+            // Mock data for classes and subjects based on our timetable
+            // Note: This must match the structure of data in Firestore, 
+            // but we use this mock locally if Firestore hasn't initialized the data yet.
+            MOCK_CLASS_DATA: {
+                // "1st Year (Science)"
+                "1st-year-science": {
+                    id: "1st-year-science",
+                    name: "1st Year (Science)",
+                    subjects: [
+                        { id: "physics-1st", name: "Physics", teacher: "Sir Saleem" },
+                        { id: "chemistry-1st", name: "Chemistry", teacher: "Miss Alina" },
+                        { id: "computer-1st", name: "Computer", teacher: "Miss Minahil" },
+                        { id: "biology-1st", name: "Biology", teacher: "Miss Shumaila" },
+                        // Add other subjects as needed...
+                    ]
+                },
+                // "9th Boys"
+                "9th-boys": {
+                    id: "9th-boys",
+                    name: "9th Boys",
+                    subjects: [
+                        { id: "math-9b", name: "Math", teacher: "Sir Hammad" },
+                        { id: "physics-9b", name: "Physics", teacher: "Sir Saleem" },
+                        { id: "english-9b", name: "English", teacher: "Sir Zulfiqar" },
+                        // Add other subjects as needed...
+                    ]
+                },
+                // "8th"
+                "8th-grade": {
+                    id: "8th-grade",
+                    name: "8th Grade",
+                    subjects: [
+                        { id: "english-8", name: "English", teacher: "Miss Sumaira" },
+                        { id: "math-8", name: "Math", teacher: "Sir Hammad" },
+                        { id: "urdu-8", name: "Urdu", teacher: "Miss Anam" },
+                        // Add other subjects as needed...
+                    ]
+                }
+            }
         };
-    </script>
-    
-    <!-- Main Application Script (Must be type="text/babel") -->
-    <script type="text/babel">
-        // Access global variables and Firebase imports made available in the module script
-        const {
-            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
-            getFirestore, doc, onSnapshot, updateDoc, setDoc, getDoc
-        } = window.firebaseImports || {};
 
-        const appId = window.__app_id || 'default-app-id';
-        const firebaseConfig = window.__firebase_config ? JSON.parse(window.__firebase_config) : null;
-        const initialAuthToken = window.__initial_auth_token;
+        // --- Utility Functions ---
 
-        let firebaseApp = null;
-        let db = null;
-        let auth = null;
+        /**
+         * Shows a message banner (success, error, or loading).
+         * @param {string} text - The message to display.
+         * @param {'success'|'error'|'info'} type - The type of message.
+         * @param {number} duration - Time in ms to hide the message (0 for permanent).
+         */
+        function showMessage(text, type, duration = 5000) {
+            const messageArea = document.getElementById('messageArea');
+            let bgColor, borderColor;
 
-        if (firebaseConfig) {
-            try {
-                firebaseApp = initializeApp(firebaseConfig);
-                db = getFirestore(firebaseApp);
-                auth = getAuth(firebaseApp);
-            } catch (error) {
-                console.error("Firebase initialization error:", error);
+            if (type === 'success') {
+                bgColor = 'bg-green-100';
+                borderColor = 'border-green-500';
+            } else if (type === 'error') {
+                bgColor = 'bg-red-100';
+                borderColor = 'border-red-500';
+            } else {
+                bgColor = 'bg-blue-100';
+                borderColor = 'border-blue-500';
+            }
+
+            messageArea.innerHTML = `
+                <div id="messageBanner" class="${bgColor} border-l-4 ${borderColor} text-gray-800 p-4 mb-4 rounded-lg flex justify-between items-center transition-all duration-300">
+                    <p class="font-medium">${text}</p>
+                    <button onclick="document.getElementById('messageBanner').remove()" class="text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            `;
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    const banner = document.getElementById('messageBanner');
+                    if (banner) banner.remove();
+                }, duration);
             }
         }
 
-        // Helper function to generate a random ID if authentication fails,
-        // though anonymous sign-in is expected to succeed now.
-        const generateRandomId = () => 
-            'anon-' + Math.random().toString(36).substring(2, 9);
+        /**
+         * Gets the Firestore collection path for public (shared) data.
+         * @returns {string} The collection path.
+         */
+        function getDiaryCollectionPath() {
+            // Public path: /artifacts/{appId}/public/data/daily_diary
+            return `artifacts/${globalState.appId}/public/data/daily_diary`;
+        }
+        
+        /**
+         * Gets the current date string in a consistent format (YYYY-MM-DD).
+         * For the demo, we are using a fixed date for consistency: November 22, 2025 (a Saturday)
+         * @returns {string} The formatted date.
+         */
+        function getDiaryDate() {
+            // Fixed date for a repeatable demo/test scenario
+            return "2025-11-22"; 
+        }
 
+        /**
+         * Formats the date for display.
+         */
+        function updateDateDisplay() {
+            const date = new Date('2025-11-22T00:00:00'); // Use the fixed date
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDate = date.toLocaleDateString('en-US', options);
+            document.getElementById('dateDisplay').textContent = `Viewing entries for: ${formattedDate}`;
+        }
 
-        const serialize = (data) => JSON.stringify(data);
-        const deserialize = (json) => {
-            try {
-                return JSON.parse(json);
-            } catch (e) {
-                return json;
-            }
-        };
+        // --- Core Application Logic ---
 
-        const getPublicDiaryRef = () => {
-            if (!db) return null;
-            // The path must align with the security rules, using the appId extracted from the config.
-            return doc(db, 'artifacts', appId, 'public', 'data', 'academyDiary', 'currentStatus');
-        };
+        /**
+         * Fetches and initializes the Class/Subject data structure.
+         * Populates the class dropdown.
+         */
+        async function initializeClasses() {
+            const select = document.getElementById('classSelect');
+            select.innerHTML = '<option value="">-- Select a Class --</option>';
 
-        // --- Static Data Definitions (from previous context) ---
-        const ACADEMY_NAME = "TOPPERS' INN ACADEMY"; 
-        const SIR_AHMAD = 'Sir Ahmad';
-        const SIR_HAMMAD = 'Sir Hammad';
-        const SIR_ZULFIQAR = 'Sir Zulfiqar';
-        const SIR_SALEEM = 'Sir Saleem';
-        const MISS_SUMAIRA = 'Miss Sumaira';
-        const MISS_ANAM = 'Miss Anam';
-        const MISS_ALINA = 'Miss Alina';
-        const MISS_SHUMAILA = 'Miss Shumaila';
-        const MISS_MINAHIL = 'Miss Minahil';
+            // Load mock data into state for immediate use
+            globalState.classData = globalState.MOCK_CLASS_DATA;
 
-        const ACADEMY_CLASSES = [
-            '8th', '9th Boys (Science)', '9th Boys (Arts)', '9th Girls (Science)', 
-            '9th Girls (Arts)', '10th (Science)', '1st Year (Science)', '2nd Year (Science)',
-        ];
-
-        const CLASS_SCHEDULE = {
-            '8th': [
-                { subject: 'Maths', teacher: SIR_HAMMAD }, { subject: 'English', teacher: MISS_SUMAIRA }, 
-                { subject: 'Urdu', teacher: MISS_SUMAIRA }, { subject: 'Science', teacher: MISS_ALINA }, 
-                { subject: 'Hist/Sst', teacher: MISS_SUMAIRA }, { subject: 'Bio/THQ', teacher: MISS_SUMAIRA },
-            ],
-            '9th Boys (Science)': [
-                { subject: 'Maths', teacher: SIR_AHMAD }, { subject: 'Physics', teacher: SIR_SALEEM }, 
-                { subject: 'Chemistry', teacher: MISS_ALINA }, { subject: 'Biology', teacher: MISS_SHUMAILA }, 
-                { subject: 'Computer', teacher: MISS_MINAHIL }, { subject: 'English', teacher: SIR_ZULFIQAR }, 
-                { subject: 'Urdu', teacher: MISS_ANAM },
-            ],
-            '9th Boys (Arts)': [
-                { subject: 'Science', teacher: MISS_MINAHIL }, { subject: 'Nutrition', teacher: MISS_SHUMAILA }, 
-            ],
-            '9th Girls (Science)': [
-                { subject: 'Maths', teacher: SIR_HAMMAD }, { subject: 'Physics', teacher: MISS_MINAHIL }, 
-                { subject: 'Chemistry', teacher: MISS_ALINA }, { subject: 'Biology', teacher: MISS_SHUMAILA }, 
-                { subject: 'Computer', teacher: MISS_MINAHIL }, { subject: 'English', teacher: MISS_SUMAIRA },
-            ],
-            '9th Girls (Arts)': [],
-            '10th (Science)': [
-                { subject: 'Maths', teacher: SIR_AHMAD }, { subject: 'Chemistry', teacher: MISS_ALINA }, 
-                { subject: 'Biology', teacher: MISS_SHUMAILA }, { subject: 'Computer', teacher: MISS_MINAHIL }, 
-                { subject: 'English', teacher: SIR_ZULFIQAR }, { subject: 'Urdu', teacher: MISS_ANAM },
-            ],
-            '1st Year (Science)': [
-                { subject: 'Physics', teacher: SIR_SALEEM }, { subject: 'Chemistry', teacher: MISS_ALINA }, 
-                { subject: 'Biology', teacher: MISS_SHUMAILA }, { subject: 'Computer', teacher: MISS_MINAHIL }, 
-                { subject: 'English', teacher: SIR_ZULFIQAR },
-            ],
-            '2nd Year (Science)': [
-                { subject: 'Maths', teacher: SIR_HAMMAD }, { subject: 'Physics', teacher: SIR_SALEEM }, 
-                { subject: 'Biology', teacher: MISS_SHUMAILA }, { subject: 'Computer', teacher: MISS_MINAHIL }, 
-                { subject: 'English', teacher: SIR_ZULFIQAR },
-            ],
-        };
-
-        // --- Entry Modal Component ---
-        const EntryModal = React.memo(({ isOpen, onClose, className, subjectName, initialContent, onSave, saving }) => {
-            const [contentEntry, setContentEntry] = React.useState(initialContent || '');
+            // Populate dropdown from MOCK data
+            Object.values(globalState.classData).forEach(classItem => {
+                const option = document.createElement('option');
+                option.value = classItem.id;
+                option.textContent = classItem.name;
+                select.appendChild(option);
+            });
             
-            React.useEffect(() => {
-                setContentEntry(initialContent || '');
-            }, [initialContent, isOpen]);
+            // Auto-select and load a default class for convenience
+            const defaultClassId = "1st-year-science";
+            if (globalState.classData[defaultClassId]) {
+                select.value = defaultClassId;
+                await loadClassData(defaultClassId);
+            }
+        }
 
-            const handleLocalSave = () => {
-                if (contentEntry.trim()) {
-                    onSave(contentEntry.trim());
-                }
-            };
+        /**
+         * Loads the data for the currently selected class and sets up the real-time listener.
+         * @param {string | null} classId - The class ID to load, or uses the dropdown value.
+         */
+        window.loadClassData = async function(classId = null) {
+            if (!globalState.isAuthReady) {
+                console.warn("Auth not ready. Aborting loadClassData.");
+                return;
+            }
 
-            if (!isOpen) return null;
+            const selectedClassId = classId || document.getElementById('classSelect').value;
+            globalState.currentClassId = selectedClassId;
 
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300 scale-100">
-                        <div className="p-6">
-                            <h2 className="text-xl font-bold text-blue-700 mb-2">Record Daily Content</h2>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Class: <span className="font-semibold">{className}</span> | Subject: <span className="font-semibold">{subjectName}</span>
-                            </p>
+            if (!selectedClassId) {
+                document.getElementById('subjectsContainer').innerHTML = '<p class="text-center text-gray-500 py-10">Select a class to view subjects.</p>';
+                return;
+            }
 
-                            <textarea
-                                value={contentEntry}
-                                onChange={(e) => setContentEntry(e.target.value)}
-                                rows="6"
-                                placeholder="Enter the main topics, exercises, or concepts covered in class today. (e.g., Covered Chapter 3: Newton's Laws of Motion. Solved problems 3.1-3.5.)"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-800"
-                                disabled={saving}
-                                autoFocus
-                            ></textarea>
+            showMessage(`Loading diary for ${globalState.classData[selectedClassId].name}...`, 'info', 0);
 
-                            <div className="flex justify-end space-x-3 mt-4">
-                                <button
-                                    onClick={onClose}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 active:scale-95 transition duration-150"
-                                    disabled={saving}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleLocalSave}
-                                    className={`px-4 py-2 text-sm font-medium rounded-lg shadow-md transition duration-150 active:scale-95 flex items-center ${
-                                        saving ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
-                                    }`}
-                                    disabled={saving || !contentEntry.trim()}
-                                >
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="w-4 h-4 mr-2" />
-                                            Save Entry
-                                        </>
-                                    )}
-                                </button>
+            // Get the Firestore collection reference
+            const diaryRef = collection(db, getDiaryCollectionPath());
+            
+            // We listen for changes in the records for the selected class and today's date
+            const q = query(
+                diaryRef,
+                where("classId", "==", selectedClassId),
+                where("date", "==", getDiaryDate())
+            );
+
+            // Set up real-time listener
+            onSnapshot(q, (snapshot) => {
+                const newRecords = {};
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    newRecords[data.subjectId] = {
+                        ...data,
+                        docId: doc.id
+                    };
+                });
+                globalState.diaryRecords = newRecords;
+                renderSubjects();
+                showMessage(`Diary records updated in real-time.`, 'success', 3000);
+            }, (error) => {
+                console.error("Error setting up real-time listener:", error);
+                showMessage(`Error loading diary entries: ${error.message}`, 'error', 0);
+            });
+        }
+
+
+        /**
+         * Renders the subject cards for the currently selected class.
+         */
+        function renderSubjects() {
+            const container = document.getElementById('subjectsContainer');
+            const classItem = globalState.classData[globalState.currentClassId];
+
+            if (!classItem) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-10">Class data not found.</p>';
+                return;
+            }
+
+            const html = classItem.subjects.map(subject => {
+                const record = globalState.diaryRecords[subject.id];
+                const content = record ? record.content : 'No daily content recorded yet for this subject.';
+                const contentClass = record ? 'text-gray-800' : 'text-gray-500 italic';
+                
+                return `
+                    <div class="bg-blue-50 border-l-4 border-blue-600 p-5 rounded-xl shadow-md transition duration-300 hover:shadow-lg">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-2xl font-bold text-blue-900">${subject.name}</h3>
+                            <button 
+                                onclick="openModal('${subject.id}')" 
+                                class="btn-primary flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-105"
+                                title="Add/Edit today's entry"
+                            >
+                                Add Content
+                            </button>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-700">Assigned Teacher: <span class="font-semibold">${subject.teacher}</span></p>
+
+                        <div class="mt-4 pt-3 border-t border-blue-200">
+                            <h4 class="text-sm font-semibold text-blue-700 uppercase tracking-wider mb-2">DAILY RECORD</h4>
+                            <div class="p-3 bg-white rounded-lg border border-blue-100 min-h-[50px]">
+                                <p class="${contentClass} whitespace-pre-wrap">${content}</p>
                             </div>
                         </div>
                     </div>
-                </div>
-            );
-        });
+                `;
+            }).join('');
 
+            container.innerHTML = html;
+        }
 
-        // --- Main Application Component ---
+        // --- Modal & Data Saving Functions (Exposed to window) ---
 
-        const App = () => {
-            const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-            const [userId, setUserId] = React.useState(null);
-            const [selectedClass, setSelectedClass] = React.useState(ACADEMY_CLASSES[0]);
-            const [diaryEntries, setDiaryEntries] = React.useState({});
-            const [loading, setLoading] = React.useState(true);
-            const [statusMessage, setStatusMessage] = React.useState({ type: 'info', text: 'Connecting...' });
-
-            const [isModalOpen, setIsModalOpen] = React.useState(false);
-            const [modalData, setModalData] = React.useState({ className: null, subjectName: null, initialContent: '' });
-            const [saving, setSaving] = React.useState(false);
-
-
-            // 1. Firebase Authentication Setup
-            React.useEffect(() => {
-                if (!auth) {
-                    setStatusMessage({ type: 'error', text: 'Firebase services are unavailable. Check configuration.' });
-                    setLoading(false);
-                    return;
-                }
-
-                const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        setUserId(user.uid);
-                        setIsAuthenticated(true);
-                        setStatusMessage({ type: 'success', text: 'User authenticated and ready to sync data.' });
-                        setLoading(false);
-                    } else {
-                        try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Auth sign-in failed:", error);
-                            // Fallback to a random ID if anonymous sign-in fails, although this violates security rules if not authenticated.
-                            setUserId(generateRandomId());
-                            setStatusMessage({ type: 'error', text: 'Authentication failed. Data will not sync (using local ID).' });
-                            setLoading(false);
-                        }
-                    }
-                });
-
-                return () => unsubscribe();
-            }, []);
-
-            // 2. Firestore Listener for Diary Entries
-            React.useEffect(() => {
-                const diaryDocRef = getPublicDiaryRef();
-                // Check for successful authentication (isAuthenticated) OR if we have a generated userId (for non-authenticated state).
-                if (!db || !userId) return;
-
-                setStatusMessage({ type: 'info', text: 'Fetching diary data...' });
-
-                const unsubscribe = onSnapshot(diaryDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        // Handle potential serialization/deserialization issues
-                        const entries = data.entries ? deserialize(data.entries) : {};
-                        
-                        // Check if deserialization returned an object
-                        if (typeof entries === 'object' && entries !== null) {
-                            setDiaryEntries(entries);
-                            setStatusMessage({ type: 'success', text: 'Diary updated in real-time.' });
-                        } else {
-                            // If deserialization failed, treat it as an empty object for safety
-                            setDiaryEntries({});
-                            setStatusMessage({ type: 'warning', text: 'Data corrupted or empty. Initializing diary.' });
-                        }
-                    } else {
-                        console.log("Diary document does not exist. Initializing...");
-                        setDiaryEntries({});
-                        setStatusMessage({ type: 'info', text: 'Diary initialized. Ready for entries.' });
-                    }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Firestore error:", error);
-                    setStatusMessage({ type: 'error', text: 'Error fetching diary: ' + error.message });
-                    setLoading(false);
-                });
-
-                return () => unsubscribe();
-            }, [userId]);
-
-            const schedule = React.useMemo(() => {
-                return CLASS_SCHEDULE[selectedClass] || [];
-            }, [selectedClass]);
-
-            const today = React.useMemo(() => {
-                // Formatting date to match the previous structure: "Saturday, November 22, 2025"
-                return new Date().toLocaleDateString('en-US', {
-                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                });
-            }, []);
-
-            const getEntryForSubject = React.useCallback((className, subjectName) => {
-                const classEntries = diaryEntries[className] || {};
-                const subjectEntries = classEntries[subjectName] || [];
-                return subjectEntries.find(entry => entry.date === today);
-            }, [diaryEntries, today]);
-
-
-            // --- Teacher/Admin Functions ---
-
-            const openModal = (className, subjectName) => {
-                const existingEntry = getEntryForSubject(className, subjectName);
-                setModalData({
-                    className,
-                    subjectName,
-                    initialContent: existingEntry ? existingEntry.content : ''
-                });
-                setIsModalOpen(true);
-            };
-
-            const closeModal = React.useCallback(() => {
-                setIsModalOpen(false);
-                setModalData({ className: null, subjectName: null, initialContent: '' });
-            }, []);
-
-            const handleSaveEntry = React.useCallback(async (contentEntry) => {
-                const { className, subjectName } = modalData;
-                const diaryDocRef = getPublicDiaryRef();
-
-                // Crucial: Check if authenticated and if we have a valid reference
-                if (!isAuthenticated || !diaryDocRef) {
-                     setStatusMessage({ type: 'error', text: 'Cannot save: Authentication failed or Database not ready.' });
-                     closeModal();
-                     return;
-                }
-                if (!contentEntry || !className || !subjectName) {
-                    setStatusMessage({ type: 'warning', text: 'Content cannot be empty or class/subject missing.' });
-                    return;
-                }
-
-                setSaving(true);
-                setStatusMessage({ type: 'info', text: 'Saving entry...' });
+        /**
+         * Opens the content modal for a specific subject.
+         * @param {string} subjectId - The ID of the subject to edit.
+         */
+        window.openModal = function(subjectId) {
+            console.log("Attempting to open modal for subject:", subjectId);
+            try {
+                const classItem = globalState.classData[globalState.currentClassId];
+                if (!classItem) throw new Error("Class data not loaded.");
                 
-                const newEntry = {
-                    date: today,
-                    content: contentEntry,
-                    teacherId: userId,
-                    timestamp: new Date().toISOString()
+                const subject = classItem.subjects.find(s => s.id === subjectId);
+                if (!subject) throw new Error("Subject not found.");
+
+                const record = globalState.diaryRecords[subjectId];
+                
+                // Set modal data
+                document.getElementById('modalSubjectId').value = subjectId;
+                document.getElementById('modalSubjectName').textContent = subject.name;
+                document.getElementById('contentInput').value = record ? record.content : '';
+                document.getElementById('saveButton').disabled = false;
+
+                // Show the modal with transition effects
+                const modal = document.getElementById('contentModal');
+                const modalContent = document.getElementById('modalContent');
+                
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.style.opacity = '1';
+                    modalContent.style.transform = 'scale(1)';
+                    modalContent.style.opacity = '1';
+                }, 10); // Short delay for transition to start
+                
+                // Add event listener to close modal on background click
+                modal.onclick = (e) => {
+                    if (e.target.id === 'contentModal') {
+                        closeModal();
+                    }
                 };
 
-                try {
-                    const docSnap = await getDoc(diaryDocRef);
-                    let currentEntries = {};
-
-                    if (docSnap.exists() && docSnap.data().entries) {
-                        currentEntries = deserialize(docSnap.data().entries);
-                        if (typeof currentEntries !== 'object' || currentEntries === null) {
-                            currentEntries = {}; // Reset if deserialized data is invalid
-                        }
-                    }
-
-                    if (!currentEntries[className]) { currentEntries[className] = {}; }
-                    if (!currentEntries[className][subjectName]) { currentEntries[className][subjectName] = []; }
-
-                    const subjectEntries = currentEntries[className][subjectName];
-                    const existingIndex = subjectEntries.findIndex(entry => entry.date === today);
-
-                    if (existingIndex !== -1) {
-                        subjectEntries[existingIndex] = newEntry;
-                    } else {
-                        subjectEntries.push(newEntry);
-                    }
-
-                    // Save the entire map back as a serialized JSON string
-                    await setDoc(diaryDocRef, {
-                        entries: serialize(currentEntries),
-                        lastUpdated: new Date().toISOString()
-                    }, { merge: true });
-
-                    setStatusMessage({ type: 'success', text: 'Diary entry saved successfully!' });
-                    closeModal();
-                } catch (error) {
-                    console.error("Error saving document: ", error);
-                    setStatusMessage({ type: 'error', text: 'Failed to save entry: ' + error.message });
-                } finally {
-                    setSaving(false);
-                }
-            }, [modalData, today, userId, closeModal, isAuthenticated]);
-
-
-            // --- UI Components ---
-
-            const Header = () => (
-                <div className="bg-white p-4 shadow-md sticky top-0 z-10">
-                    <h1 className="text-2xl font-extrabold text-blue-800 tracking-tight flex items-center">
-                        <BookOpen className="w-6 h-6 mr-2 text-blue-500" />
-                        {ACADEMY_NAME} Daily Diary
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Viewing entries for: <span className="font-semibold text-gray-700">{today}</span>
-                    </p>
-                    <div className="flex items-center text-xs mt-2 text-gray-600">
-                        <User className="w-4 h-4 mr-1 text-gray-400" />
-                        User ID: <span title={userId} className="truncate ml-1 font-mono text-xs max-w-[150px] sm:max-w-none">{userId || 'N/A'}</span>
-                    </div>
-                    {statusMessage && (
-                        <div className={`mt-2 p-2 rounded-lg text-sm ${
-                            statusMessage.type === 'error' ? 'bg-red-100 text-red-700' :
-                            statusMessage.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-                            statusMessage.type === 'success' ? 'bg-green-100 text-green-700' :
-                            'bg-blue-100 text-blue-700'
-                        } flex items-center`}>
-                            {statusMessage.type === 'error' && <AlertTriangle className="w-4 h-4 mr-2" />}
-                            {statusMessage.type === 'success' && <CheckCircle className="w-4 h-4 mr-2" />}
-                            {statusMessage.type === 'info' && <Clock className="w-4 h-4 mr-2" />}
-                            {statusMessage.text}
-                        </div>
-                    )}
-                </div>
-            );
-
-            const ClassSelector = () => (
-                <div className="p-4 bg-gray-50 border-b border-gray-200">
-                    <label htmlFor="class-select" className="block text-sm font-medium text-gray-700 mb-2">
-                        <GraduationCap className="inline-block w-4 h-4 mr-1 text-blue-500" />
-                        Select Class & Group:
-                    </label>
-                    <div className="relative">
-                        <select
-                            id="class-select"
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value)}
-                            className="block w-full rounded-lg border-gray-300 shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer bg-white pr-8"
-                        >
-                            {ACADEMY_CLASSES.map(cls => (
-                                <option key={cls} value={cls}>{cls}</option>
-                            ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                        </div>
-                    </div>
-                </div>
-            );
-
-            const DiaryContent = () => {
-                if (loading) {
-                    return (
-                        <div className="flex justify-center items-center p-8 text-blue-600">
-                            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                            Loading Diary...
-                        </div>
-                    );
-                }
-
-                if (schedule.length === 0) {
-                    return (
-                        <div className="p-8 text-center text-gray-500">
-                            <AlertTriangle className="w-8 h-8 mx-auto mb-4 text-yellow-500" />
-                            <p className="font-semibold">No assigned subjects found for {selectedClass}.</p>
-                            <p className="text-sm">Only subjects with an explicitly assigned teacher in the timetable are displayed.</p>
-                        </div>
-                    );
-                }
-
-                return (
-                    <div className="p-4 grid gap-4">
-                        {schedule.map((slot, index) => {
-                            const entry = getEntryForSubject(selectedClass, slot.subject);
-                            const isCompleted = !!entry;
-
-                            return (
-                                <div
-                                    key={`${selectedClass}-${slot.subject}`}
-                                    className={`p-4 rounded-xl shadow-lg transition-all duration-300
-                                        ${isCompleted ? 'bg-white border-l-4 border-green-500 hover:shadow-xl' : 'bg-white border-l-4 border-yellow-500 hover:shadow-lg'}`}
-                                >
-                                    <div className="flex justify-between items-start mb-3">
-                                        <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                                            <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
-                                            {slot.subject}
-                                        </h3>
-                                        <button
-                                            onClick={() => openModal(selectedClass, slot.subject)}
-                                            className="flex-shrink-0 px-3 py-1 text-sm font-semibold rounded-full shadow-md transition-all duration-300
-                                                bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                            disabled={!isAuthenticated}
-                                        >
-                                            {isCompleted ? 'Edit Entry' : 'Add Content'}
-                                        </button>
-                                    </div>
-
-                                    <p className="text-sm text-gray-600 mb-3 border-b pb-2">
-                                        Assigned Teacher: <span className="font-medium text-blue-700">{slot.teacher}</span>
-                                    </p>
-                                    
-                                    <div className="bg-gray-50 p-3 rounded-lg min-h-[50px]">
-                                        <h4 className="text-sm font-extrabold text-gray-700 mb-2 border-b border-gray-200 pb-1">
-                                            DAILY RECORD
-                                        </h4>
-                                        {isCompleted ? (
-                                            <>
-                                                <div className="flex justify-between items-center text-xs mb-2">
-                                                    <div className="flex items-center text-green-700 font-semibold">
-                                                        <Calendar className="w-3 h-3 mr-1" />
-                                                        {entry.date}
-                                                    </div>
-                                                    <div className="flex items-center text-gray-600">
-                                                        <User className="w-3 h-3 mr-1" />
-                                                        Teacher ID: <span className="font-mono ml-1 truncate max-w-[80px] sm:max-w-[120px]" title={entry.teacherId}>{entry.teacherId}</span>
-                                                    </div>
-                                                </div>
-                                                <p className="text-gray-800 whitespace-pre-wrap mt-1">{entry.content}</p>
-                                            </>
-                                        ) : (
-                                            <p className="text-gray-500 italic text-sm">
-                                                No daily content recorded yet for this subject.
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                );
-            };
-
-            return (
-                <div className="min-h-screen bg-gray-100 font-[Inter] antialiased">
-                    <Header />
-                    <div className="max-w-4xl mx-auto pb-8">
-                        <ClassSelector />
-                        <DiaryContent />
-                    </div>
-
-                    <EntryModal
-                        isOpen={isModalOpen}
-                        onClose={closeModal}
-                        className={modalData.className}
-                        subjectName={modalData.subjectName}
-                        initialContent={modalData.initialContent}
-                        onSave={handleSaveEntry}
-                        saving={saving}
-                    />
-                </div>
-            );
+            } catch (error) {
+                console.error("Error opening modal:", error);
+                showMessage(`Could not open entry form: ${error.message}`, 'error', 5000);
+            }
         };
 
-        // Render the application
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
-        root.render(<App />);
+        /**
+         * Closes the content modal.
+         */
+        window.closeModal = function() {
+            const modal = document.getElementById('contentModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            // Reverse transition effects
+            modal.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.95)';
+            modalContent.style.opacity = '0';
+            
+            // Remove event listener
+            modal.onclick = null;
+            
+            // Hide after transition
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        };
+
+        /**
+         * Saves the content from the modal to Firestore.
+         */
+        window.saveContent = async function() {
+            const subjectId = document.getElementById('modalSubjectId').value;
+            const content = document.getElementById('contentInput').value.trim();
+            const saveButton = document.getElementById('saveButton');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+            
+            if (!content) {
+                showMessage("Please enter some content before saving.", 'error', 3000);
+                saveButton.textContent = 'Save Entry';
+                saveButton.disabled = false;
+                return;
+            }
+
+            try {
+                closeModal();
+                showMessage("Saving diary entry...", 'info', 0);
+                
+                const record = globalState.diaryRecords[subjectId];
+                const collectionRef = collection(db, getDiaryCollectionPath());
+                
+                const subject = globalState.classData[globalState.currentClassId].subjects.find(s => s.id === subjectId);
+                
+                const data = {
+                    classId: globalState.currentClassId,
+                    className: globalState.classData[globalState.currentClassId].name,
+                    subjectId: subjectId,
+                    subjectName: subject.name,
+                    teacher: subject.teacher,
+                    date: getDiaryDate(),
+                    content: content,
+                    timestamp: serverTimestamp() // Adds the server-side timestamp
+                };
+
+                // If record exists, update the existing document. Otherwise, create a new one.
+                if (record && record.docId) {
+                    const docRef = doc(db, getDiaryCollectionPath(), record.docId);
+                    await setDoc(docRef, data, { merge: true }); // Use setDoc with merge for update
+                } else {
+                    // Create a unique document ID based on class-subject-date to prevent duplicates
+                    const uniqueDocId = `${globalState.currentClassId}-${subjectId}-${getDiaryDate()}`;
+                    const docRef = doc(db, getDiaryCollectionPath(), uniqueDocId);
+                    await setDoc(docRef, data); // Use setDoc with the predefined ID
+                }
+
+                showMessage("Diary entry saved successfully! Refreshing view...", 'success', 4000);
+
+            } catch (error) {
+                console.error("Error saving content:", error);
+                showMessage(`Failed to save entry: ${error.message}`, 'error', 0);
+            } finally {
+                saveButton.textContent = 'Save Entry';
+                saveButton.disabled = false;
+            }
+        };
+
+        // --- Initialization and Authentication ---
+
+        /**
+         * Main initialization function
+         */
+        async function initializeApp() {
+            updateDateDisplay();
+            showMessage("Connecting to Firebase...", 'info', 0);
+            
+            // 1. Authenticate
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication failed:", error);
+                showMessage("Authentication failed. Data will not sync. " + error.message, 'error', 0);
+            }
+
+            // 2. Auth State Listener
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    globalState.userId = user.uid;
+                    document.getElementById('userIdDisplay').textContent = `User ID: ${user.uid.substring(0, 8)}-...`;
+                    globalState.isAuthReady = true;
+                    showMessage("Diary initialized. Ready for entries.", 'info', 3000);
+                    
+                    // 3. Initialize Class Data and Listeners
+                    initializeClasses();
+                } else {
+                    globalState.userId = null;
+                    globalState.isAuthReady = true; // Still ready, but logged out
+                    document.getElementById('userIdDisplay').textContent = 'User ID: N/A';
+                }
+            });
+        }
+
+        // Start the application
+        initializeApp();
 
     </script>
 </body>
